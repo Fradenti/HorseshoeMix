@@ -67,7 +67,7 @@ HS_mix_mean <- function(Y,
   # loop --------------------------------------------------------------------
   for (sim in 1:(nsim * thinning + burn_in)) {
 
-    
+
     # Update means
       unosukappa <- 1  + (1 / (lambda2Zeta * tau2 ))
       beta       <- rnorm(n,  (Y ) / (unosukappa), sqrt(sigma2/unosukappa)  )
@@ -77,7 +77,7 @@ HS_mix_mean <- function(Y,
       RSigma  <- .5 * ( sum( (beta ^ 2 )/(lambda2Zeta *tau2) )) + e  #)
       sigma2  <- rivngamma_cpp(a = n, b = RSigma)
     ###################################################################
-    
+
     if (tau2fixed > 0) {
       tau2 <- tau2fixed
     } else if(tau_IG){
@@ -153,7 +153,7 @@ HS_mix_mean <- function(Y,
     }
   }
 
-    
+
   if(cheap){
     out <- list(
       sigma2  = SIGMA2,
@@ -165,7 +165,7 @@ HS_mix_mean <- function(Y,
       med_beta = apply(BETA,2,median))
 
     }else{
-    
+
       out <- list(
         beta    = BETA,
         sigma2  = SIGMA2,
@@ -176,54 +176,13 @@ HS_mix_mean <- function(Y,
         a_BNP   = A_BNP,
         mu_beta    = colMeans(BETA),
         Y = Y)
-      
-      
+
+
     }
-    
-    
-    
+
+
+
   return(out)
 }
- # ----------------------------------------------------------
-
-post.lambda2 <- function(lambda2old,tau2,zeta,beta,L,sigma2,nj){
-
-  newl2 <- numeric(L)
-  t     <- 1/lambda2old
-  u     <- runif(L,0,1/(1+t))
-  upp   <- 1/u-1
-  for(l in 1:L){
-
-    if(nj[l]==0){
-      newl2[l] <- rcauchy(1)^2
-    }else{
-      B2_l  <- sum(beta[zeta==l]^2)/(2*sigma2*tau2)
-      
-      upp_p <- pgamma(upp[l], 
-                      shape = (nj[l]+1)/2,
-                      rate =  B2_l)
 
 
-      upp_p <- ifelse(upp_p<1e-4,1e-4,upp_p)
-      pp    <- runif(1,0,upp_p)
-      t__   <- qgamma(pp,shape = (nj[l]+1)/2,rate = B2_l,log.p = 0)
-      newl2[l] <- 1/t__
-    }
-  }
-return(newl2)
-}
-
-
-
-Tau2_IGprior <- function(beta,
-                         sigma2,
-                         lambda2zeta,
-                         atau=atau,
-                         btau=btau){
-  
-  b.post <-  sum(beta^2/(lambda2zeta*sigma2))/2 + btau
-  a.post <-  length(beta)/2 + atau
-  tau2   <-  1/rgamma(1, a.post, 1/b.post)
-  
-  return(tau2)
-}

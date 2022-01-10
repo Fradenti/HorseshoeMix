@@ -48,7 +48,7 @@ SSTau2 <- function(beta, lambda2, zeta, sigma2, oldtau2, p){
   ###
   ubt    = (1 - utau)/utau
   tempt  = .5 * sum( beta^2/(lambda2[zeta]*sigma2) )
-  Fubt   = stats::pgamma(ubt, (p + 1)/2, rate = tempt)  
+  Fubt   = stats::pgamma(ubt, (p + 1)/2, rate = tempt)
   Fubt   = max(Fubt, 1e-08)
   ut     = stats::runif(1, 0, Fubt)
   et     = stats::qgamma(ut,  (p + 1)/2, rate = tempt)
@@ -63,7 +63,7 @@ SSTau2_gamma2 <- function(beta, lambda2, zeta, sigma2, oldtau2, p, gamma2){
   ###
   ubt    = (1 - utau)/utau
   tempt  = .5/gamma2 * sum( beta^2/(lambda2[zeta]*sigma2) )
-  Fubt   = stats::pgamma(ubt, (p + 1)/2, rate = tempt)  
+  Fubt   = stats::pgamma(ubt, (p + 1)/2, rate = tempt)
   Fubt   = max(Fubt, 1e-08)
   ut     = stats::runif(1, 0, Fubt)
   et     = stats::qgamma(ut,  (p + 1)/2, rate = tempt)
@@ -78,8 +78,8 @@ SSTau2.mvt <- function(beta, lambda2, zeta, sigma2, oldtau2, PJ){
   utau   = stats::runif(1, 0, 1/(1 + et))
   ###
   ubt    = (1 - utau)/utau
-  tempt  = .5 * sum( c(beta^2/sigma2) /(lambda2[zeta]) ) 
-  Fubt   = stats::pgamma(ubt, (PJ + 1)/2, rate = tempt)  
+  tempt  = .5 * sum( c(beta^2/sigma2) /(lambda2[zeta]) )
+  Fubt   = stats::pgamma(ubt, (PJ + 1)/2, rate = tempt)
   Fubt   = max(Fubt, 1e-08)
   ut     = stats::runif(1, 0, Fubt)
   et     = stats::qgamma(ut,  (PJ + 1)/2, rate = tempt)
@@ -90,16 +90,16 @@ SSTau2.mvt <- function(beta, lambda2, zeta, sigma2, oldtau2, PJ){
 #######################################################################
 # Slice Sampler Lambda -------------------------------------------------------
 SSLambda2 <- function(beta, oldlambda2, zeta, sigma2, tau2, p, nj, L){
-  
+
   t      = 1/(oldlambda2)
   upsi   = stats::runif(L, 0, 1/(1 + t))
-  
+
   lam1   = tapply(beta, zeta, function(x) sum(x^2)/(2*sigma2*tau2))
   lam1[is.na(lam1)] = 0
   ######################################################################
   UPSI <- (1 - upsi)/upsi
   ######################################################################
-  Fub   = stats::pgamma(UPSI, (nj + 1)/2, rate = lam1)  
+  Fub   = stats::pgamma(UPSI, (nj + 1)/2, rate = lam1)
   Fub[Fub < (1e-04)] = 1e-04
   ut = stats::runif(L, 0, Fub)
   et = stats::qgamma(ut, (nj + 1)/2, rate = lam1)
@@ -113,13 +113,13 @@ SSLambda2_v2 <- function(beta, oldlambda2, zeta, sigma2, tau2, p, nj, L){
   lambda2 = numeric(L)
   for(l in 1:L){
     if(nj[l]==0){
-      lambda2[l] <- (rcauchy(1))^2  
+      lambda2[l] <- (rcauchy(1))^2
     }else{
       t    <-  1/(oldlambda2[l])
       upsi <-  stats::runif(1, 0, 1/(1 + t))
       lam1 <-  sum(beta[zeta==l]^2)/(2*sigma2*tau2)
       UPSI <- (1 - upsi)/upsi
-      Fub  <-  stats::pgamma(UPSI, (nj[l] + 1)/2, rate = lam1)  
+      Fub  <-  stats::pgamma(UPSI, (nj[l] + 1)/2, rate = lam1)
       Fub[Fub < (1e-04)] <- 1e-04
       ut <- stats::runif(1, 0, Fub)
       et <- stats::qgamma(ut, (nj[l] + 1)/2, rate = lam1)
@@ -170,9 +170,9 @@ Update.stickbreaking <- function(nj,a_BNP,L){
 #######################################################################
 
 # Postprocessing --------------------------------------------
-  
+
   # Cutting the estimated dendrogram
-  
+
   est_clust_hier <- function(PSM,K=2){
     dd <- as.dist(1-PSM)
     hc <- hclust(dd)
@@ -187,7 +187,7 @@ kapper <- function(m1){
   kappa <- L
   for (i in 1:nsim){
     kappa[i,] <- 1/(1+m1$tau2[i] * L[i,])
-  }  
+  }
   return(kappa)
 }
 
@@ -206,7 +206,7 @@ trace_back <- function(m1){
 # clustering, PSM
 
 clustering <- function(m1,type=1, greedy=F){
-  
+
   PSM <- mcclust::comp.psm(m1$zeta)
   if(type==1){
     if(greedy){
@@ -219,7 +219,7 @@ clustering <- function(m1,type=1, greedy=F){
   }else if(type==3){
     CL <- mcclust.ext::minbinder.ext(PSM)$cl
   }
-  
+
   return(list(PSM=PSM, CL=CL))
 }
 
@@ -237,4 +237,51 @@ sse <- function(x,y){
 }
 Asse <- function(x,y){
   (sum(abs(x-y)))
+}
+
+
+
+
+# Auxiliary Functions ----------------------------------------------------------
+
+post.lambda2 <- function(lambda2old,tau2,zeta,beta,L,sigma2,nj){
+
+  newl2 <- numeric(L)
+  t     <- 1/lambda2old
+  u     <- runif(L,0,1/(1+t))
+  upp   <- 1/u-1
+  for(l in 1:L){
+
+    if(nj[l]==0){
+      newl2[l] <- rcauchy(1)^2
+    }else{
+      B2_l  <- sum(beta[zeta==l]^2)/(2*sigma2*tau2)
+
+      upp_p <- pgamma(upp[l],
+                      shape = (nj[l]+1)/2,
+                      rate =  B2_l)
+
+
+      upp_p <- ifelse(upp_p<1e-4,1e-4,upp_p)
+      pp    <- runif(1,0,upp_p)
+      t__   <- qgamma(pp,shape = (nj[l]+1)/2,rate = B2_l,log.p = 0)
+      newl2[l] <- 1/t__
+    }
+  }
+  return(newl2)
+}
+
+
+
+Tau2_IGprior <- function(beta,
+                         sigma2,
+                         lambda2zeta,
+                         atau=atau,
+                         btau=btau){
+
+  b.post <-  sum(beta^2/(lambda2zeta*sigma2))/2 + btau
+  a.post <-  length(beta)/2 + atau
+  tau2   <-  1/rgamma(1, a.post, 1/b.post)
+
+  return(tau2)
 }

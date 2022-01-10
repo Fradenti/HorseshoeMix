@@ -10,7 +10,7 @@
 #' @param nsim number of iterations
 #' @param burn_in burn in period
 #' @param thinning potential thinning period
-#' @param a_dir 
+#' @param a_dir
 #' @param BNP logical, use a nonparametric mixture
 #' @param a_BNP hyperparameter for the nonparametric process (DP vs PY)
 #' @param d_BNP hyperparameter for the nonparametric process (DP vs PY)
@@ -23,10 +23,8 @@
 #' @param MEAN logical, run faster algorithm for mean estimation
 #' @param MEAN.S1 logical, fix sigma2 to 1
 #'
-#' @return
-#' @export
+#' @return a list containg the MCMC simulation for the parameters
 #'
-#' @examples
 HS_mix_regression <- function(Y,
                    X = NULL,
                    L = 50,
@@ -39,29 +37,29 @@ HS_mix_regression <- function(Y,
                    a_dir = 1,
                    BNP = F,
                    a_BNP = 1,
-                   d_BNP=1, 
+                   d_BNP=1,
                    DP=T,
                    a_a_BNP = 1,
                    b_a_BNP = 1,
                    tau2fixed = 0,
-                   gamma.tau=1, 
+                   gamma.tau=1,
                    gamma.lambda=1,
                    MEAN=F, MEAN.S1=F) {
-  
+
   n       <- length(Y)
   if(is.null(X)){ X <- diag(n) }
   p       <- ncol(X)
-  
+
   # precomputables
   if(MEAN==F){
     XTX     <- t(X) %*% (X)
-    
+
     MEAN.S1 <- F
-    
+
     if (p == 1)  XTX     <- c(XTX)
     XTY     <- t(X) %*% (Y)
   }
-  
+
   # Initial values
   a       <- rep(a_dir, L)
   pi      <- MCMCpack::rdirichlet(1, a)
@@ -69,16 +67,16 @@ HS_mix_regression <- function(Y,
   zeta    <- sample(L, size = p, replace = T, pi)
   zeta    <- factor(zeta, levels = 1:L)
   lambda2Zeta <- lambda2[zeta]
-  
+
   nj      <- table(zeta)
   sigma2  <- rgamma(1, 1, 1)
-  
+
   if (tau2fixed == 0) {
     tau2    <- rgamma(1, 1, 1)
   } else{
     tau2 <- tau2fixed
   }
-  
+
   if(MEAN){
     c1        <- rep(1,p)
     Intercept <- F
@@ -86,7 +84,7 @@ HS_mix_regression <- function(Y,
     p         <- n
     if(MEAN.S1) {sigma2 <- 1}
   }
-  
+
   if (Intercept) {
     beta0 <- rnorm(1, 0, 10)
   } else{
@@ -97,22 +95,22 @@ HS_mix_regression <- function(Y,
     a_BNP  <- rgamma(1,a_a_BNP,b_a_BNP)
     random <- T
   }
-  
+
   # containers --------------------------------------------------------------
   BETA    <- array(NA, c(nsim, p))
   ZETA    <- array(NA, c(nsim, p))
-  
+
   PI      <- array(NA, c(nsim, L))
   SIGMA2  <- numeric(nsim)
   BETA0   <- numeric(nsim)
   TAU2    <- numeric(nsim)
   A_BNP   <- numeric(nsim)
-  
+
   if (cheap == F) {
     LAMBDA2 <- array(NA, c(nsim, L))
   }
   RUE     <- p / n <= 2
-  
+
   if (verbose) {
     cat("MCMC progress:\n")
     flush.console()
@@ -124,19 +122,19 @@ HS_mix_regression <- function(Y,
   }
   # loop --------------------------------------------------------------------
   for (sim in 1:(nsim * thinning + burn_in)) {
-    
-    
+
+
     if(MEAN){
       unosukappa <- 1  + (1 / (lambda2Zeta * tau2 ))
       beta <- rnorm(p,  (Y - beta0) / (unosukappa), sqrt(sigma2/unosukappa)  )
     }else if (RUE) {
-      A       <- XTX / sigma2 
+      A       <- XTX / sigma2
       diag(A) <- diag(A) + (1 / (lambda2Zeta * tau2 * sigma2))
       beta <-
-        Sample.MVN.precision.R(Omega = A, 
+        Sample.MVN.precision.R(Omega = A,
                                  Xt.Sigma.Y = t(X) %*% (Y - beta0) / sigma2,
                                  p =  p)
-      
+
     } else{
       # BHATTAC. 2016
       beta  <-
@@ -151,12 +149,12 @@ HS_mix_regression <- function(Y,
     }
     #########################################################################################
     if (Intercept) {
-      beta0 <- rnorm(1, 
-                     sum(Y - X %*% beta) / n, 
+      beta0 <- rnorm(1,
+                     sum(Y - X %*% beta) / n,
                      sqrt(sigma2 / n ))
     }
     ###################################################################
-    
+
     if(MEAN.S1){
       sigma2 <- 1
     }else{
@@ -191,9 +189,9 @@ HS_mix_regression <- function(Y,
     } else{
       pi <- c(MCMCpack::rdirichlet(1, alpha = a + nj))
     }
-    
+
     ############################################################################################
-    
+
     zeta    <- update_zeta_cpp(beta = beta,
                                lambda2 = lambda2,
                                pi = pi,
@@ -202,14 +200,14 @@ HS_mix_regression <- function(Y,
                                p = p,
                                tau2 = tau2,
                                posslab = 1:L)
-    
+
     zeta    <- factor(zeta, levels = 1:L)
     nj      <- table(zeta)
-    
+
     if(BNP & DP & random){
       a_BNP <- rgamma(1, a_a_BNP + L - 1, b_a_BNP - sum(log(u[1:(L-1)] )))
     }
-    
+
     ############################################################################################
     lambda2 <- Slice_lambda_scaled_cpp(beta=beta,
                                        prevlambda2 = lambda2,
@@ -218,34 +216,34 @@ HS_mix_regression <- function(Y,
                                        tau2 = tau2,
                                        gamma2_lambda = gamma.lambda,
                                        L = L)
-    
+
     lambda2Zeta <- lambda2[zeta]
     ##################################################
     if (sim > burn_in && ((sim - burn_in) %% thinning == 0)) {
       rr                <- floor((sim - burn_in) / thinning)
-      
+
       BETA[rr,]    <- beta
       SIGMA2[rr]   <- sigma2
       TAU2[rr]     <- tau2
       PI[rr,]      <- pi
       A_BNP[rr]    <- a_BNP
       ZETA[rr,]    <- zeta
-      
+
       if (Intercept) {
         BETA0[rr]  <- beta0
       }
-      
+
       if (cheap == F) {
         LAMBDA2[rr,] <- lambda2
       }
     }
-    
+
     if (verbose) {
       ipbar <- ipbar + 1
       setTxtProgressBar(pbar, ipbar)
     }
   }
-  
+
   if (cheap == F) {
     out <- list(
       beta    = BETA,
