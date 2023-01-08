@@ -145,7 +145,7 @@ arma::colvec Slice_lambda_cpp(
                                         1,0);
 
     if(F_uppBound<.0001){F_uppBound     = 0.0001; }
-      double p_g     = arma::randu(1)[1] *F_uppBound;
+      double p_g     = arma::randu(1)[0] *F_uppBound;
 
       double Quant      = R::qgamma(p_g,(nl[l] + 1)/2., 1./rate, 1, 0);
       newlambda2[l]  = 1/Quant;
@@ -186,7 +186,7 @@ arma::colvec Slice_lambda_scaled_cpp(
                                         1,0);
 
       if(F_uppBound<.0001){F_uppBound     = 0.0001; }
-      double p_g     = arma::randu(1)[1] *F_uppBound;
+      double p_g     = arma::randu(1)[0] *F_uppBound;
 
       double Quant      = R::qgamma(p_g,(nl[l] + 1)/2., 1./rate, 1, 0);
       newlambda2[l]  = gamma2_lambda/Quant;
